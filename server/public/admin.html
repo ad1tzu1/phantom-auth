@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Ph3ntom Admin</title>
+<style>
+  body{font-family:system-ui,sans-serif;background:#0b0b0c;color:#eee;margin:0;padding:24px}
+  input,select,button{padding:8px 12px;border-radius:8px;border:1px solid #333;background:#161618;color:#fff}
+  button{cursor:pointer;background:#2a2a30}
+  button:hover{background:#3a3a42}
+  .card{background:#121214;border:1px solid #222;border-radius:12px;padding:16px;margin-bottom:16px;max-width:900px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  td,th{border-bottom:1px solid #222;padding:8px;text-align:left}
+  .ok{color:#7dffa0}.err{color:#ff8a8a}
+  h1{font-size:20px;margin:0 0 16px}
+  h2{font-size:15px;margin:0 0 12px;color:#aaa}
+</style>
+</head>
+<body>
+<h1>Ph3ntom Admin</h1>
+<div class="card" id="loginBox">
+  <h2>Login (owner/admin)</h2>
+  <input id="email" placeholder="email" style="width:220px"/>
+  <input id="pass" type="password" placeholder="password" style="width:180px"/>
+  <button onclick="login()">Login</button>
+  <div id="loginMsg"></div>
+</div>
+<div id="app" style="display:none">
+  <div class="card">
+    <h2>DLL status (what loaders inject)</h2>
+    <div id="dllInfo">...</div>
+  </div>
+  <div class="card">
+    <h2>Generate key</h2>
+    <select id="plan">
+      <option value="hour">1 hour</option>
+      <option value="day">1 day</option>
+      <option value="week">1 week</option>
+      <option value="month" selected>1 month</option>
+      <option value="6month">6 months</option>
+      <option value="year">1 year</option>
+      <option value="lifetime">lifetime</option>
+    </select>
+    <input id="note" placeholder="note (optional)" style="width:200px"/>
+    <button onclick="genKey()">Generate</button>
+    <div id="keyOut" class="ok"></div>
+  </div>
+  <div class="card">
+    <h2>Revoke user subscription</h2>
+    <input id="revEmail" placeholder="user email" style="width:240px"/>
+    <button onclick="revoke()">Revoke</button>
+    <div id="revMsg"></div>
+  </div>
+  <div class="card">
+    <h2>Grant subscription</h2>
+    <input id="grantEmail" placeholder="user email" style="width:200px"/>
+    <select id="grantPlan">
+      <option value="hour">1 hour</option>
+      <option value="day">1 day</option>
+      <option value="week">1 week</option>
+      <option value="month" selected>1 month</option>
+      <option value="6month">6 months</option>
+      <option value="year">1 year</option>
+      <option value="lifetime">lifetime</option>
+    </select>
+    <button onclick="grant()">Grant</button>
+    <div id="grantMsg"></div>
+  </div>
+  <div class="card">
+    <h2>Users</h2>
+    <button onclick="loadUsers()">Refresh</button>
+    <div id="users"></div>
+  </div>
+  <div class="card">
+    <h2>Keys</h2>
+    <button onclick="loadKeys()">Refresh</button>
+    <div id="keys"></div>
+  </div>
+</div>
+<script>
+let token = sessionStorage.getItem('ph_token') || '';
+const api = '';
+async function req(path, opts={}) {
+  opts.headers = Object.assign({'Content-Type':'application/json'}, opts.headers||{});
+  if (token) opts.headers.Authorization = 'Bearer ' + token;
+  const r = await fetch(api + path, opts);
+  const j = await r.json().catch(()=>({}));
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+async function login() {
+  try {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('pass').value;
+    const j = await req('/api/login', {method:'POST', body: JSON.stringify({email, password})});
+    token = j.token; sessionStorage.setItem('ph_token', token);
+    document.getElementById('loginBox').style.display='none';
+    document.getElementById('app').style.display='block';
+    refreshAll();
+  } catch(e) {
+    document.getElementById('loginMsg').innerHTML = '<span class="err">'+e.message+'</span>';
+  }
+}
+async function refreshAll() {
+  try {
+    const h = await fetch('/api/health').then(r=>r.json());
+    document.getElementById('dllInfo').textContent =
+      h.dll ? ('ON server — size '+h.dll_size+' sha1 '+h.dll_sha1) : 'MISSING — put velocity.dll in server/private and push to GitHub';
+  } catch(e) { document.getElementById('dllInfo').textContent = e.message; }
+  loadUsers(); loadKeys();
+}
+async function genKey() {
+  try {
+    const plan = document.getElementById('plan').value;
+    const note = document.getElementById('note').value;
+    const j = await req('/api/admin/keys', {method:'POST', body: JSON.stringify({plan, note})});
+    document.getElementById('keyOut').textContent = j.key + '  ('+j.plan+')';
+    loadKeys();
+  } catch(e) { document.getElementById('keyOut').innerHTML = '<span class="err">'+e.message+'</span>'; }
+}
+async function revoke() {
+  try {
+    const email = document.getElementById('revEmail').value.trim();
+    await req('/api/admin/revoke-sub', {method:'POST', body: JSON.stringify({email})});
+    document.getElementById('revMsg').innerHTML = '<span class="ok">revoked</span>';
+    loadUsers();
+  } catch(e) { document.getElementById('revMsg').innerHTML = '<span class="err">'+e.message+'</span>'; }
+}
+async function grant() {
+  try {
+    const email = document.getElementById('grantEmail').value.trim();
+    const plan = document.getElementById('grantPlan').value;
+    await req('/api/admin/grant-sub', {method:'POST', body: JSON.stringify({email, plan})});
+    document.getElementById('grantMsg').innerHTML = '<span class="ok">granted</span>';
+    loadUsers();
+  } catch(e) { document.getElementById('grantMsg').innerHTML = '<span class="err">'+e.message+'</span>'; }
+}
+async function loadUsers() {
+  try {
+    const j = await req('/api/admin/users');
+    let html = '<table><tr><th>email</th><th>user</th><th>role</th><th>expires</th><th>active</th></tr>';
+    for (const u of j.users) {
+      html += `<tr><td>${u.email}</td><td>${u.username}</td><td>${u.role}</td><td>${u.expires_label||u.sub_expires||'-'}</td><td>${u.sub_active}</td></tr>`;
+    }
+    html += '</table>';
+    document.getElementById('users').innerHTML = html;
+  } catch(e) { document.getElementById('users').textContent = e.message; }
+}
+async function loadKeys() {
+  try {
+    const j = await req('/api/admin/keys');
+    let html = '<table><tr><th>key</th><th>plan</th><th>used_by</th><th>note</th></tr>';
+    for (const k of j.keys) {
+      html += `<tr><td>${k.key_code}</td><td>${k.plan}</td><td>${k.used_by||'-'}</td><td>${k.note||''}</td></tr>`;
+    }
+    html += '</table>';
+    document.getElementById('keys').innerHTML = html;
+  } catch(e) { document.getElementById('keys').textContent = e.message; }
+}
+if (token) {
+  document.getElementById('loginBox').style.display='none';
+  document.getElementById('app').style.display='block';
+  refreshAll();
+}
+</script>
+</body>
+</html>
