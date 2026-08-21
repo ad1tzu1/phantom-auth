@@ -1,0 +1,78 @@
+================================================================================
+UPLOAD THIS FOLDER TO GITHUB (step 1 only)
+================================================================================
+
+What this zip is
+----------------
+Full Ph3ntom Auth project:
+  loader/   = the loader you build and give to users
+  server/   = the API that checks keys and sends velocity.dll
+  SETUP_DETAILED.txt = full guide after GitHub is ready
+
+Right now we ONLY do GitHub upload.
+
+
+STEP A — put your cheat dll (optional for first push)
+-----------------------------------------------------
+Copy your compiled cheat to:
+
+  server/private/velocity.dll
+
+Exact name must be velocity.dll
+(You can also push without it first, then add it later.)
+
+
+STEP B — create private GitHub repo
+-----------------------------------
+1. Open https://github.com/new
+2. Repository name: phantom-auth   (or any name you like)
+3. Visibility: PRIVATE
+4. Do NOT add README / gitignore / license (leave empty)
+5. Create repository
+
+
+STEP C — upload from your PC
+----------------------------
+1. Unzip PhantomAuth_FULL.zip somewhere, e.g. Desktop\PhantomAuth
+2. Open folder so you see: loader, server, SETUP_DETAILED.txt
+3. Open PowerShell IN that folder (Shift+right-click → Open in Terminal)
+
+Run these one by one (replace YOURNAME with your GitHub username):
+
+  git init
+  git add .
+  git commit -m "Ph3ntom auth first upload"
+  git branch -M main
+  git remote add origin https://github.com/YOURNAME/phantom-auth.git
+  git push -u origin main
+
+If GitHub asks for login:
+  - use browser login, OR
+  - create a Personal Access Token (GitHub → Settings → Developer settings
+    → Personal access tokens) and paste it as the password
+
+
+STEP D — check it worked
+------------------------
+Open your repo page. You should see:
+  loader/
+  server/
+  SETUP_DETAILED.txt
+  START_HERE_GITHUB.txt
+
+When that is done, message me:
+  "github done"
+and we do the next step (Turso + Render) together.
+
+
+LOADER ONLY note
+----------------
+The loader is under loader/
+  - PhantomLoaderAuth.vcxproj  → open in Visual Studio
+  - src/main.cpp               → API host is already set to an example
+    Change k_api_host later to YOUR Render URL after we create it
+
+Do NOT build/ship the loader to customers until the server is live.
+
+
+================================================================================

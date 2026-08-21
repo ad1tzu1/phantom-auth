@@ -1,0 +1,230 @@
+
+================================================================================
+Ph3ntom Auth — SUPER SIMPLE SETUP (do in this order)
+================================================================================
+
+GOAL
+----
+1) Server lives on Render (NOT your PC)
+2) Keys + users live in Turso (never wipe)
+3) When YOU upload a new velocity.dll to GitHub → Render redeploys
+   → next time a user presses LAUNCH, loader downloads THE NEW dll and injects it
+
+
+--------------------------------------------------------------------------------
+STEP 0 — what you need (make free accounts)
+--------------------------------------------------------------------------------
+- GitHub account
+- Turso account     https://turso.tech
+- Render account   https://render.com
+- UptimeRobot      https://uptimerobot.com
+
+
+--------------------------------------------------------------------------------
+STEP 1 — Turso database (2 minutes)
+--------------------------------------------------------------------------------
+1. Open https://turso.tech and sign up (GitHub login is fine)
+2. Click "Create Database"
+3. Name: phantom
+4. Create
+5. Open the database page
+6. Copy "Database URL"  (starts with libsql://...)
+7. Click Create Token → copy the token
+
+Save both in a notepad:
+  TURSO_DATABASE_URL=libsql://....
+  TURSO_AUTH_TOKEN=....
+
+
+--------------------------------------------------------------------------------
+STEP 2 — put your cheat dll in the project
+--------------------------------------------------------------------------------
+On your PC, open the PhantomAuth folder.
+
+Put your compiled cheat here (exact name):
+
+  PhantomAuth/server/private/velocity.dll
+
+If the file is named something else, RENAME it to velocity.dll.
+
+This folder is private. Users never download it from a public link.
+Only the loader gets it AFTER login through the API.
+
+
+--------------------------------------------------------------------------------
+STEP 3 — GitHub private repo
+--------------------------------------------------------------------------------
+1. Go to https://github.com/new
+2. Repository name: phantom-auth
+3. Set to PRIVATE
+4. Create repository
+
+5. On your PC, open PowerShell in the PhantomAuth folder and run
+   (replace YOURNAME with your GitHub username):
+
+   git init
+   git add .
+   git commit -m "first upload"
+   git branch -M main
+   git remote add origin https://github.com/YOURNAME/phantom-auth.git
+   git push -u origin main
+
+If git asks you to login, use GitHub login / personal access token.
+
+
+--------------------------------------------------------------------------------
+STEP 4 — Render web service
+--------------------------------------------------------------------------------
+1. Open https://render.com → sign up with GitHub
+2. New → Web Service
+3. Connect the repo: phantom-auth
+4. Settings:
+
+   Name:           phantomauth
+   Root Directory: server
+   Runtime:        Node
+   Build Command:  npm install
+   Start Command:  node server.js
+   Instance:       Free
+
+5. Environment → Add these (paste your real values):
+
+   TURSO_DATABASE_URL = (from step 1)
+   TURSO_AUTH_TOKEN   = (from step 1)
+   PHANTOM_JWT        = (type a long random password, 30+ characters)
+   PHANTOM_OWNER_EMAIL = your@email.com
+   PHANTOM_OWNER_PASS  = a strong password YOU choose
+   PHANTOM_PORT        = 8787
+
+6. Create Web Service → wait until deploy says Live
+
+7. Copy your URL, example:
+   https://phantomauth-xxxx.onrender.com
+
+8. Test in browser:
+   https://phantomauth-xxxx.onrender.com/api/health
+
+   You want: "ok": true
+   and "dll": true   ← means velocity.dll is on the server
+
+
+--------------------------------------------------------------------------------
+STEP 5 — keep server awake
+--------------------------------------------------------------------------------
+1. UptimeRobot → Add New Monitor
+2. Type: HTTP(s)
+3. URL: https://phantomauth-xxxx.onrender.com/api/health
+4. Every: 5 minutes
+5. Create
+
+
+--------------------------------------------------------------------------------
+STEP 6 — admin panel (generate / revoke keys)
+--------------------------------------------------------------------------------
+Browser:
+
+  https://phantomauth-xxxx.onrender.com/admin
+
+Login with PHANTOM_OWNER_EMAIL + PHANTOM_OWNER_PASS
+
+You can:
+- Generate keys: 1 hour, 1 day, 1 week, 1 month, 6 months, 1 year, lifetime
+- See all users + expiry
+- Grant sub to an email
+- Revoke a user (they cannot launch anymore)
+- See if DLL is on the server
+
+
+--------------------------------------------------------------------------------
+STEP 7 — point the LOADER at your server
+--------------------------------------------------------------------------------
+1. Open:  PhantomAuth/loader/src/main.cpp
+2. Find k_api_host / k_api_https (near top)
+3. Set:
+
+   // example — use YOUR render host, no https://
+   k_api_host  = "phantomauth-xxxx.onrender.com";
+   k_api_https = true;
+   k_api_port  = 443;
+
+4. Open PhantomLoaderAuth.vcxproj in Visual Studio
+5. Build → Release | x64
+6. Give users ONLY PhantomLoader.exe (no dll next to it)
+
+
+--------------------------------------------------------------------------------
+STEP 8 — how users use it
+--------------------------------------------------------------------------------
+1. User opens loader
+2. Register / Login (email + password)
+3. Redeem a key (from you or sell.app later)
+4. Press LAUNCH
+5. Loader asks server for module → server streams velocity.dll → inject
+
+
+--------------------------------------------------------------------------------
+STEP 9 — HOW TO UPDATE THE CHEAT (new velocity.dll)
+--------------------------------------------------------------------------------
+THIS IS THE PART YOU ASKED FOR.
+
+Every time you build a new cheat:
+
+1. Copy new file over:
+     PhantomAuth/server/private/velocity.dll
+
+2. In PowerShell inside PhantomAuth folder:
+
+     git add server/private/velocity.dll
+     git commit -m "update cheat dll"
+     git push
+
+3. Render sees the push → auto redeploys (1–3 minutes)
+
+4. Check:
+     https://phantomauth-xxxx.onrender.com/api/health
+   dll_sha1 should CHANGE (new hash = new file)
+
+5. User presses LAUNCH again → downloads NEW dll → injects NEW version
+
+Loader does NOT keep an old dll forever for inject — each LAUNCH
+downloads from the server (no-cache headers).
+
+
+--------------------------------------------------------------------------------
+STEP 10 — revoke someone
+--------------------------------------------------------------------------------
+Admin panel → Revoke user → type their email → Revoke
+
+Next LAUNCH they get "subscription expired".
+
+
+--------------------------------------------------------------------------------
+OPTIONAL LATER
+--------------------------------------------------------------------------------
+- Discord /redeem bot
+- sell.app webhook to auto-create keys
+(say if you want those next; get the base working first)
+
+
+--------------------------------------------------------------------------------
+COMMON PROBLEMS
+--------------------------------------------------------------------------------
+health says dll: false
+  → velocity.dll not in server/private/ or not pushed to GitHub
+
+health old / sleep
+  → free Render sleeps; UptimeRobot fixes most of it
+
+login works but payload 503
+  → same as dll missing
+
+git push but Render no change
+  → Render dashboard → Manual Deploy → Deploy latest commit
+
+loader cannot connect
+  → wrong k_api_host, or still http instead of https
+
+
+================================================================================
+END
+================================================================================
