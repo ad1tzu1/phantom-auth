@@ -1,0 +1,81 @@
+PHANTOM AUTH — FREE PERSISTENT DB (TURSO) + RENDER
+==================================================
+
+Render free has NO disk. Local SQLite gets wiped.
+Turso = free remote SQLite. Subs stay forever.
+
+--------------------------------------------
+1) CREATE FREE TURSO DATABASE
+--------------------------------------------
+A. Go to https://turso.tech and sign up (GitHub login is fine)
+
+B. Install Turso CLI on your PC (Windows PowerShell):
+   irm get.tur.so/install.ps1 | iex
+
+   OR skip CLI and use the website:
+   - Dashboard → Create Database
+   - Name: phantom
+   - Region: closest to you
+   - Create
+
+C. Open the database → copy:
+   - Database URL   (looks like libsql://phantom-xxxxx.turso.io)
+   - Create Token → copy the auth token
+
+--------------------------------------------
+2) PUT KEYS ON RENDER (FREE)
+--------------------------------------------
+Render dashboard → your phantomauth Web Service → Environment → Add:
+
+  TURSO_DATABASE_URL   =  libsql://YOUR-DB.turso.io
+  TURSO_AUTH_TOKEN     =  your_token_here
+
+Keep your existing vars too (PHANTOM_JWT, PHANTOM_OWNER_EMAIL, etc.)
+
+Save Environment.
+
+--------------------------------------------
+3) UPDATE SERVER CODE ON RENDER
+--------------------------------------------
+Replace these files in your Render service repo / deploy folder:
+
+  server/server.js       ← new Turso version
+  server/package.json    ← uses @libsql/client (no better-sqlite3)
+
+If you deploy from GitHub:
+  - overwrite those two files in the repo
+  - commit + push
+  - Render auto-deploys
+
+If you deploy manually:
+  - upload the new server folder
+  - trigger Manual Deploy
+
+After deploy, open:
+  https://phantomauth-khc4.onrender.com/api/health
+
+Should show: { "ok": true, "turso": true, ... }
+
+--------------------------------------------
+4) KEEP IT AWAKE (FREE)
+--------------------------------------------
+https://uptimerobot.com → free account → Add Monitor
+  Type: HTTP(s)
+  URL:  https://phantomauth-khc4.onrender.com/api/health
+  Every: 5 minutes
+
+--------------------------------------------
+5) RE-ADD SUBS ONCE
+--------------------------------------------
+Old local DB is gone. In admin:
+  - friend registers / you find email
+  - grant week/month again
+
+This time Turso keeps it even when Render sleeps or your PC is off.
+
+--------------------------------------------
+6) STAGE THE DLL (same as before)
+--------------------------------------------
+Put velocity.dll (or your cheat DLL) at:
+  server/private/velocity.dll
+on the Render service so /api/loader/payload can stream it.

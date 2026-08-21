@@ -1,0 +1,27 @@
+
+PHANTOM + STRIPE SETUP
+=====================
+
+1) Stripe Dashboard → Products
+   - Product "Phantom Week" → Price $4 one-time → copy Price ID (price_xxx)
+   - Product "Phantom Month" → Price $9 one-time → copy Price ID
+
+2) Stripe → Developers → API keys
+   - Secret key: sk_live_... or sk_test_...
+
+3) Stripe → Developers → Webhooks → Add endpoint
+   URL: https://phantomauth-khc4.onrender.com/api/pay/webhook
+   Event: checkout.session.completed
+   Copy Signing secret: whsec_...
+
+4) Render → PhantomAuth → Environment:
+   STRIPE_SECRET_KEY=sk_...
+   STRIPE_WEBHOOK_SECRET=whsec_...
+   STRIPE_PRICE_WEEK=price_...
+   STRIPE_PRICE_MONTH=price_...
+   PUBLIC_SITE_URL=https://superb-cascaron-df7fc8.netlify.app
+
+5) Redeploy Render
+
+6) User flow:
+   Register/Login on site → Shop → Select → Stripe pays → webhook activates sub automatically
